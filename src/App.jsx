@@ -9,7 +9,7 @@ import ArchivePage from './components/ArchivePage';
 import ConfirmModal from './components/ConfirmModal';
 import LoginPage from './components/LoginPage';
 import InviteMemberModal from './components/InviteMemberModal'; 
-import { Kanban, Bell, ChevronDown, Globe, BriefcaseBusiness, CheckCircle2, LayoutDashboard, FolderKanban, Plus, Settings, Archive, Trash2, LogOut, UserPlus } from 'lucide-react'; 
+import { Kanban, ChevronDown, Globe, BriefcaseBusiness, LayoutDashboard, FolderKanban, Plus, Settings, Archive, Trash2, LogOut, UserPlus } from 'lucide-react'; 
 
 import { db, auth } from './firebase'; 
 import { collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, query, setDoc, serverTimestamp, where, arrayUnion, arrayRemove } from 'firebase/firestore'; 
@@ -17,7 +17,6 @@ import { onAuthStateChanged, signOut, deleteUser } from 'firebase/auth';
 
 const projectsCollectionRef = collection(db, "projects");
 const ticketsCollectionRef = collection(db, "tickets");
-const notificationsCollectionRef = collection(db, "notifications");
 
 function MainLayout({ currentUser }) {
   const navigate = useNavigate();
@@ -42,8 +41,6 @@ function MainLayout({ currentUser }) {
   
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(profileDocRef, (docSnap) => {
@@ -75,50 +72,9 @@ function MainLayout({ currentUser }) {
     return () => unsubscribe();
   }, [activeProjectId]); 
 
-  // FIX: Real-time listener using separate queries and client-side sorting to avoid Firestore index errors
-  useEffect(() => {
-    if (!activeProjectId) return;
-    
-    const q1 = query(notificationsCollectionRef, where("projectId", "==", activeProjectId));
-    const q2 = query(notificationsCollectionRef, where("projectId", "==", "global"));
-    
-    let projectNotifs = [];
-    let globalNotifs = [];
-
-    const updateCombined = () => {
-      const combined = [...projectNotifs, ...globalNotifs];
-      combined.sort((a, b) => {
-        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
-        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
-        return timeB - timeA;
-      });
-      setNotifications(combined);
-    };
-
-    const unsub1 = onSnapshot(q1, (snapshot) => {
-      projectNotifs = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-      updateCombined();
-    }, (error) => {
-      console.error("Error fetching project notifications:", error);
-    });
-
-    const unsub2 = onSnapshot(q2, (snapshot) => {
-      globalNotifs = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-      updateCombined();
-    }, (error) => {
-      console.error("Error fetching global notifications:", error);
-    });
-
-    return () => {
-      unsub1();
-      unsub2();
-    };
-  }, [activeProjectId]);
-
   const handleSaveProfile = async (updatedProfile) => {
     await setDoc(profileDocRef, updatedProfile);
     setIsEditingProfile(false);
-    addNotification('Profile Updated', 'Your profile details have been saved to the cloud.', activeProjectId || 'global');
   };
 
   const handleDeleteAccount = async () => {
@@ -145,7 +101,6 @@ function MainLayout({ currentUser }) {
     });
     
     setActiveProjectId(newProjectRef.id);
-    addNotification('New Workspace Created', `"${projectName}" is now active.`, newProjectRef.id);
     navigate('/');
   };
 
@@ -154,7 +109,6 @@ function MainLayout({ currentUser }) {
     await updateDoc(projectRef, {
       members: arrayUnion(emailToInvite)
     });
-    addNotification('Team Member Invited', `${emailToInvite} can now access this workspace.`);
     setIsInviting(false);
   };
 
@@ -167,7 +121,6 @@ function MainLayout({ currentUser }) {
     await updateDoc(projectRef, {
       members: arrayRemove(memberConfirmDialog.memberEmail)
     });
-    addNotification('Member Removed', `${memberConfirmDialog.memberEmail} has been removed from the workspace.`);
     setMemberConfirmDialog({ isOpen: false, memberEmail: '' }); 
   };
 
@@ -178,7 +131,6 @@ function MainLayout({ currentUser }) {
   const executeDeleteProject = async () => {
     const idToDelete = projectConfirmDialog.projectId;
     await deleteDoc(doc(db, "projects", idToDelete));
-    addNotification('Workspace Deleted', `The workspace was permanently removed.`);
     setProjectConfirmDialog({ isOpen: false, projectId: '', projectName: '' });
     if (activeProjectId === idToDelete) {
       const remainingProjects = projects.filter(p => p.id !== idToDelete);
@@ -211,46 +163,7 @@ function MainLayout({ currentUser }) {
     await deleteDoc(ticketDoc);
   };
 
-  const addNotification = async (title, desc, targetProjectId = activeProjectId) => {
-    if (!targetProjectId) return;
-    try {
-      await addDoc(notificationsCollectionRef, {
-        projectId: targetProjectId,
-        title,
-        desc,
-        readBy: [currentUser.email],
-        createdAt: serverTimestamp()
-      });
-    } catch (err) {
-      console.error("Error adding notification:", err);
-    }
-  };
-
   const handleLogout = () => signOut(auth);
-
-  const projectNotifications = notifications.filter(n => n.projectId === activeProjectId || n.projectId === 'global');
-  const unreadCount = projectNotifications.filter(n => !(n.readBy || []).includes(currentUser.email)).length;
-
-  const handleToggleNotifications = async () => {
-    const nextState = !showNotifications;
-    setShowNotifications(nextState);
-    setShowProfileMenu(false);
-    
-    if (nextState) {
-      for (const notif of projectNotifications) {
-        if (!(notif.readBy || []).includes(currentUser.email)) {
-          try {
-            const notifRef = doc(db, "notifications", notif.id);
-            await updateDoc(notifRef, {
-              readBy: arrayUnion(currentUser.email)
-            });
-          } catch (err) {
-            console.error("Error marking notification read:", err);
-          }
-        }
-      }
-    }
-  };
 
   const activeProject = projects.find(p => p.id === activeProjectId);
 
@@ -333,35 +246,8 @@ function MainLayout({ currentUser }) {
             </div>
 
             <div className="flex items-center gap-5 md:gap-6">
-              <div className="relative">
-                <button onClick={handleToggleNotifications} className="relative mt-1 text-slate-400 transition-colors hover:text-slate-600">
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-red-500 text-[9px] font-bold text-white shadow-sm">{unreadCount}</span>}
-                </button>
-
-                {showNotifications && (
-                  <div className="absolute right-0 z-50 mt-3 w-80 rounded-xl border border-slate-200 bg-white py-2 shadow-xl">
-                    <div className="mb-2 border-b border-slate-100 px-4 py-2 flex justify-between items-center">
-                      <h3 className="text-sm font-bold text-slate-800">Activity Log</h3>
-                      <span className="text-xs text-slate-400 font-medium">{projectNotifications.length} total</span>
-                    </div>
-                    <div className="flex flex-col gap-1 px-2 max-h-80 overflow-y-auto">
-                      {projectNotifications.length === 0 ? <p className="p-4 text-center text-sm text-slate-500">No recent activity.</p> : projectNotifications.map(notif => {
-                        const isRead = (notif.readBy || []).includes(currentUser.email);
-                        return (
-                          <div key={notif.id} className={`flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-slate-50 ${isRead ? 'opacity-70' : 'bg-blue-50/50'}`}>
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
-                            <div><p className="text-sm font-bold leading-tight text-slate-700">{notif.title}</p><p className="mt-1 text-xs text-slate-500 leading-relaxed">{notif.desc}</p></div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               <div className="relative border-l border-slate-200 pl-5 md:pl-6">
-                <div onClick={() => { setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }} className="group flex cursor-pointer items-center gap-3">
+                <div onClick={() => setShowProfileMenu(!showProfileMenu)} className="group flex cursor-pointer items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-white shadow-sm transition-colors group-hover:bg-blue-600">{userProfile.initials}</div>
                   <div className="hidden text-sm md:block">
                     <p className="mb-1 font-bold leading-none text-slate-700 transition-colors group-hover:text-blue-600">{userProfile.name}</p>
@@ -453,14 +339,13 @@ function MainLayout({ currentUser }) {
                       addTicketToDB={addTicketToDB}
                       deleteTicketFromDB={deleteTicketFromDB}
                       activeProjectId={activeProjectId} 
-                      addNotification={addNotification}
                     />
                   </>
                 )
               } 
             />
-            <Route path="/ticket/:id" element={<TicketPage tickets={tickets} updateTicketInDB={updateTicketInDB} addNotification={addNotification} currentUser={currentUser} userProfile={userProfile} />} />
-            <Route path="/archive" element={<ArchivePage allTickets={tickets} updateTicketInDB={updateTicketInDB} deleteTicketFromDB={deleteTicketFromDB} activeProjectId={activeProjectId} addNotification={addNotification} />} />
+            <Route path="/ticket/:id" element={<TicketPage tickets={tickets} updateTicketInDB={updateTicketInDB} currentUser={currentUser} userProfile={userProfile} />} />
+            <Route path="/archive" element={<ArchivePage allTickets={tickets} updateTicketInDB={updateTicketInDB} deleteTicketFromDB={deleteTicketFromDB} activeProjectId={activeProjectId} />} />
           </Routes>
         </main>
       </div>

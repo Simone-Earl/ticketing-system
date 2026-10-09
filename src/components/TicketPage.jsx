@@ -13,7 +13,8 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 const getTimestamp = () => Date.now();
 const formatBadgeText = (text) => text ? text.replace('-', ' ').toUpperCase() : '';
 
-export default function TicketPage({ tickets, updateTicketInDB, addNotification, currentUser, userProfile }) {
+// Removed addNotification from props
+export default function TicketPage({ tickets, updateTicketInDB, currentUser, userProfile }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const ticket = tickets.find(t => t.id === id);
@@ -28,7 +29,6 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
   const [replyingId, setReplyingId] = useState(null);
   const [replyText, setReplyText] = useState('');
 
-  // Edit Ticket Modal State
   const [isEditingTicket, setIsEditingTicket] = useState(false);
   const [editForm, setEditForm] = useState({
     title: '',
@@ -54,7 +54,6 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
     );
   }
 
-  // Compute chronological sequential ticket number (#1, #2, etc.)
   const projectTickets = tickets.filter(t => t.projectId === ticket.projectId);
   const sortedProjectTickets = [...projectTickets].sort((a, b) => {
     const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
@@ -69,7 +68,7 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
 
   const handleUpdate = async (field, value) => {
     await updateTicketInDB(ticket.id, { [field]: value });
-    addNotification(`Ticket Updated`, `Changed ${field} to ${formatBadgeText(value)}.`);
+    // Removed notification
     setShowStatusMenu(false);
     setShowPriorityMenu(false);
   };
@@ -94,14 +93,14 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
       description: editForm.description.trim(),
       status: editForm.status,
       priority: editForm.priority,
-      type: editForm.priority, // Legacy sync
+      type: editForm.priority,
       techStack: editForm.techStack ? editForm.techStack.split(',').map(t => t.trim()).filter(Boolean) : [],
       repoLink: editForm.repoLink.trim(),
       liveLink: editForm.liveLink.trim()
     };
 
     await updateTicketInDB(ticket.id, updatedData);
-    addNotification('Ticket Updated', `"${updatedData.title}" was successfully updated.`);
+    // Removed notification
     setIsEditingTicket(false);
   };
 

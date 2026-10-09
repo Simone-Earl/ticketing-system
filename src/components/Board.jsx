@@ -14,7 +14,8 @@ const columns = [
   { id: 'done', title: 'Done' },
 ];
 
-export default function Board({ allTickets, updateTicketInDB, addTicketToDB, deleteTicketFromDB, activeProjectId, addNotification }) {
+// Removed addNotification from props
+export default function Board({ allTickets, updateTicketInDB, addTicketToDB, deleteTicketFromDB, activeProjectId }) {
   const navigate = useNavigate(); 
   const [searchQuery, setSearchQuery] = useState(''); 
   const [isCreating, setIsCreating] = useState(false);
@@ -29,7 +30,6 @@ export default function Board({ allTickets, updateTicketInDB, addTicketToDB, del
 
   const projectTickets = allTickets.filter(ticket => ticket.projectId === activeProjectId && !ticket.isArchived);
 
-  // FIX: Sort project tickets chronologically to assign stable sequential numbers (#1, #2, etc.)
   const sortedProjectTickets = [...projectTickets].sort((a, b) => {
     const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
     const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
@@ -51,14 +51,14 @@ export default function Board({ allTickets, updateTicketInDB, addTicketToDB, del
     const draggedTicket = allTickets.find(t => t.id === ticketId);
     if (draggedTicket && draggedTicket.status !== newStatus) {
       await updateTicketInDB(ticketId, { status: newStatus });
-      addNotification('Status Updated', `Ticket was moved to ${newStatus.replace('-', ' ').toUpperCase()}.`);
+      // Removed notification
     }
   };
 
   const handleAddTicket = async (newTicket) => {
     await addTicketToDB(newTicket);
     setIsCreating(false);
-    addNotification('Ticket Created', `New ticket added to backlog.`);
+    // Removed notification
   };
 
   const requestArchiveTicket = (ticketId, ticketTitle) => setConfirmDialog({ isOpen: true, type: 'archive', ticketId, ticketTitle });
@@ -67,10 +67,10 @@ export default function Board({ allTickets, updateTicketInDB, addTicketToDB, del
   const executeConfirmAction = async () => {
     if (confirmDialog.type === 'archive') {
       await updateTicketInDB(confirmDialog.ticketId, { isArchived: true });
-      addNotification('Ticket Archived', `Ticket has been moved to the archive.`);
+      // Removed notification
     } else if (confirmDialog.type === 'delete') {
       await deleteTicketFromDB(confirmDialog.ticketId);
-      addNotification('Ticket Deleted', `Ticket was permanently removed.`);
+      // Removed notification
     }
     setConfirmDialog({ isOpen: false, type: '', ticketId: '', ticketTitle: '' });
   };
