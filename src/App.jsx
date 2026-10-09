@@ -17,6 +17,7 @@ import { onAuthStateChanged, signOut, deleteUser } from 'firebase/auth';
 
 const projectsCollectionRef = collection(db, "projects");
 const ticketsCollectionRef = collection(db, "tickets");
+const notificationsCollectionRef = collection(db, "notifications");
 
 function MainLayout({ currentUser }) {
   const navigate = useNavigate();
@@ -73,6 +74,46 @@ function MainLayout({ currentUser }) {
     });
     return () => unsubscribe();
   }, [activeProjectId]); 
+
+  // FIX: Real-time listener using separate queries and client-side sorting to avoid Firestore index errors
+  useEffect(() => {
+    if (!activeProjectId) return;
+    
+    const q1 = query(notificationsCollectionRef, where("projectId", "==", activeProjectId));
+    const q2 = query(notificationsCollectionRef, where("projectId", "==", "global"));
+    
+    let projectNotifs = [];
+    let globalNotifs = [];
+
+    const updateCombined = () => {
+      const combined = [...projectNotifs, ...globalNotifs];
+      combined.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+        return timeB - timeA;
+      });
+      setNotifications(combined);
+    };
+
+    const unsub1 = onSnapshot(q1, (snapshot) => {
+      projectNotifs = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+      updateCombined();
+    }, (error) => {
+      console.error("Error fetching project notifications:", error);
+    });
+
+    const unsub2 = onSnapshot(q2, (snapshot) => {
+      globalNotifs = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+      updateCombined();
+    }, (error) => {
+      console.error("Error fetching global notifications:", error);
+    });
+
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [activeProjectId]);
 
   const handleSaveProfile = async (updatedProfile) => {
     await setDoc(profileDocRef, updatedProfile);
@@ -156,7 +197,7 @@ function MainLayout({ currentUser }) {
       authorEmail: currentUser.email,
       authorName: userProfile.username || userProfile.name || currentUser.email.split('@')[0],
       authorInitials: userProfile.initials || currentUser.email.substring(0, 2).toUpperCase(),
-      createdAt: serverTimestamp() // FIX: Tracks chronological order
+      createdAt: serverTimestamp()
     });
   };
 
@@ -170,25 +211,44 @@ function MainLayout({ currentUser }) {
     await deleteDoc(ticketDoc);
   };
 
-  const addNotification = (title, desc, targetProjectId = activeProjectId) => {
+  const addNotification = async (title, desc, targetProjectId = activeProjectId) => {
     if (!targetProjectId) return;
-    const newNotifId = `notif-${Math.random().toString(36).substring(2, 9)}`;
-    setNotifications(prev => [
-      { id: newNotifId, projectId: targetProjectId, title, desc, read: false },
-      ...prev
-    ]);
+    try {
+      await addDoc(notificationsCollectionRef, {
+        projectId: targetProjectId,
+        title,
+        desc,
+        readBy: [currentUser.email],
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error adding notification:", err);
+    }
   };
 
   const handleLogout = () => signOut(auth);
 
   const projectNotifications = notifications.filter(n => n.projectId === activeProjectId || n.projectId === 'global');
-  const unreadCount = projectNotifications.filter(n => !n.read).length;
+  const unreadCount = projectNotifications.filter(n => !(n.readBy || []).includes(currentUser.email)).length;
 
-  const handleToggleNotifications = () => {
-    setShowNotifications(!showNotifications);
+  const handleToggleNotifications = async () => {
+    const nextState = !showNotifications;
+    setShowNotifications(nextState);
     setShowProfileMenu(false);
-    if (!showNotifications) {
-      setNotifications(prev => prev.map(n => n.projectId === activeProjectId || n.projectId === 'global' ? { ...n, read: true } : n));
+    
+    if (nextState) {
+      for (const notif of projectNotifications) {
+        if (!(notif.readBy || []).includes(currentUser.email)) {
+          try {
+            const notifRef = doc(db, "notifications", notif.id);
+            await updateDoc(notifRef, {
+              readBy: arrayUnion(currentUser.email)
+            });
+          } catch (err) {
+            console.error("Error marking notification read:", err);
+          }
+        }
+      }
     }
   };
 
@@ -286,12 +346,15 @@ function MainLayout({ currentUser }) {
                       <span className="text-xs text-slate-400 font-medium">{projectNotifications.length} total</span>
                     </div>
                     <div className="flex flex-col gap-1 px-2 max-h-80 overflow-y-auto">
-                      {projectNotifications.length === 0 ? <p className="p-4 text-center text-sm text-slate-500">No recent activity.</p> : projectNotifications.map(notif => (
-                        <div key={notif.id} className={`flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-slate-50 ${notif.read ? 'opacity-70' : 'bg-blue-50/50'}`}>
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
-                          <div><p className="text-sm font-bold leading-tight text-slate-700">{notif.title}</p><p className="mt-1 text-xs text-slate-500 leading-relaxed">{notif.desc}</p></div>
-                        </div>
-                      ))}
+                      {projectNotifications.length === 0 ? <p className="p-4 text-center text-sm text-slate-500">No recent activity.</p> : projectNotifications.map(notif => {
+                        const isRead = (notif.readBy || []).includes(currentUser.email);
+                        return (
+                          <div key={notif.id} className={`flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-slate-50 ${isRead ? 'opacity-70' : 'bg-blue-50/50'}`}>
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+                            <div><p className="text-sm font-bold leading-tight text-slate-700">{notif.title}</p><p className="mt-1 text-xs text-slate-500 leading-relaxed">{notif.desc}</p></div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -396,7 +459,6 @@ function MainLayout({ currentUser }) {
                 )
               } 
             />
-            {/* FIX: Passed userProfile into TicketPage here */}
             <Route path="/ticket/:id" element={<TicketPage tickets={tickets} updateTicketInDB={updateTicketInDB} addNotification={addNotification} currentUser={currentUser} userProfile={userProfile} />} />
             <Route path="/archive" element={<ArchivePage allTickets={tickets} updateTicketInDB={updateTicketInDB} deleteTicketFromDB={deleteTicketFromDB} activeProjectId={activeProjectId} addNotification={addNotification} />} />
           </Routes>
