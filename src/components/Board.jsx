@@ -29,6 +29,18 @@ export default function Board({ allTickets, updateTicketInDB, addTicketToDB, del
 
   const projectTickets = allTickets.filter(ticket => ticket.projectId === activeProjectId && !ticket.isArchived);
 
+  // FIX: Sort project tickets chronologically to assign stable sequential numbers (#1, #2, etc.)
+  const sortedProjectTickets = [...projectTickets].sort((a, b) => {
+    const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+    const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+    return timeA - timeB;
+  });
+
+  const ticketNumberMap = {};
+  sortedProjectTickets.forEach((t, index) => {
+    ticketNumberMap[t.id] = `#${index + 1}`;
+  });
+
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     if (!over) return;
@@ -68,7 +80,6 @@ export default function Board({ allTickets, updateTicketInDB, addTicketToDB, del
     return ticket.title.toLowerCase().includes(lowerCaseQuery) || ticket.description.toLowerCase().includes(lowerCaseQuery) || ticket.tags.some(tag => tag.toLowerCase().includes(lowerCaseQuery));
   });
 
-  // FIX: Match exact UPPERCASE priority strings from TicketPage
   const priorityWeights = { 'URGENT': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
 
   return (
@@ -86,7 +97,6 @@ export default function Board({ allTickets, updateTicketInDB, addTicketToDB, del
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 pb-6 min-h-[calc(100vh-300px)]">
           {columns.map((column) => {
-            // FIX: Bulletproof sorting that normalizes all legacy ticket strings!
             const columnTickets = filteredTickets
               .filter((ticket) => ticket.status === column.id)
               .sort((a, b) => {
@@ -96,7 +106,11 @@ export default function Board({ allTickets, updateTicketInDB, addTicketToDB, del
               });
             
             return (
-              <Column key={column.id} column={column} tickets={columnTickets} 
+              <Column 
+                key={column.id} 
+                column={column} 
+                tickets={columnTickets} 
+                ticketNumberMap={ticketNumberMap}
                 onTicketClick={(ticket) => { sessionStorage.setItem('boardScrollPosition', window.scrollY.toString()); navigate(`/ticket/${ticket.id}`); }}
                 onRequestArchiveTicket={requestArchiveTicket}
                 onRequestDeleteTicket={requestDeleteTicket}

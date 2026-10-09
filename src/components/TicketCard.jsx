@@ -2,7 +2,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { AlertCircle, ChevronsUp, Minus, ChevronDown, Archive, Trash2 } from 'lucide-react';
 
-export default function TicketCard({ ticket, onClick, onRequestArchiveTicket, onRequestDeleteTicket }) {
+export default function TicketCard({ ticket, ticketNumber, onClick, onRequestArchiveTicket, onRequestDeleteTicket }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: ticket.id,
   });
@@ -43,7 +43,6 @@ export default function TicketCard({ ticket, onClick, onRequestArchiveTicket, on
   const displayPriority = ticket.priority || ticket.type || 'LOW';
   const priorityDisplay = getPriorityConfig(displayPriority);
   
-  // Dynamic user data variables
   const authorInitials = ticket.authorInitials || ticket.authorEmail?.substring(0, 2).toUpperCase() || 'U';
   const authorEmail = ticket.authorEmail || 'Unknown User';
 
@@ -59,7 +58,10 @@ export default function TicketCard({ ticket, onClick, onRequestArchiveTicket, on
       }`}
     >
       <div className="flex justify-between items-start mb-3">
-        <span className="text-[10px] font-bold text-slate-400 tracking-wider">{ticket.id}</span>
+        {/* FIX: Displays sequential number instead of raw Firestore ID */}
+        <span className="text-xs font-bold text-blue-600 tracking-wider bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+          {ticketNumber || '#1'}
+        </span>
         
         <div className="flex items-center gap-1">
           <button 
@@ -105,7 +107,6 @@ export default function TicketCard({ ticket, onClick, onRequestArchiveTicket, on
           <span>{displayPriority}</span>
         </div>
         
-        {/* DYNAMIC AVATAR */}
         <div 
           className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-2 ring-white"
           title={`Created by: ${authorEmail}`}

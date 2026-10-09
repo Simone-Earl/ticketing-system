@@ -28,7 +28,7 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
   const [replyingId, setReplyingId] = useState(null);
   const [replyText, setReplyText] = useState('');
 
-  // Enhanced Edit Ticket Modal State (now includes Status & Priority)
+  // Edit Ticket Modal State
   const [isEditingTicket, setIsEditingTicket] = useState(false);
   const [editForm, setEditForm] = useState({
     title: '',
@@ -54,6 +54,16 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
     );
   }
 
+  // Compute chronological sequential ticket number (#1, #2, etc.)
+  const projectTickets = tickets.filter(t => t.projectId === ticket.projectId);
+  const sortedProjectTickets = [...projectTickets].sort((a, b) => {
+    const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+    const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+    return timeA - timeB;
+  });
+  const ticketIndex = sortedProjectTickets.findIndex(t => t.id === ticket.id);
+  const ticketNumber = ticketIndex !== -1 ? `#${ticketIndex + 1}` : '#1';
+
   const currentStatus = ticket.status?.toLowerCase().replace(' ', '-') || 'backlog';
   const currentPriority = ticket.priority?.toUpperCase() || 'LOW';
 
@@ -64,7 +74,6 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
     setShowPriorityMenu(false);
   };
 
-  // Open Edit Modal and pre-fill all fields including status and priority
   const openEditModal = () => {
     setEditForm({
       title: ticket.title || '',
@@ -78,7 +87,6 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
     setIsEditingTicket(true);
   };
 
-  // Save Edit Modal Changes
   const handleSaveTicketEdit = async (e) => {
     e.preventDefault();
     const updatedData = {
@@ -229,6 +237,7 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
             <LayoutDashboard className="h-4 w-4" /> Workspace
           </button>
           <span className="text-slate-300">/</span>
+          <span className="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{ticketNumber}</span>
           <span className="text-slate-900 font-bold truncate max-w-[200px] md:max-w-[400px]">{ticket.title}</span>
         </div>
         
@@ -560,7 +569,6 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
 
       </div>
 
-      {/* ENHANCED EDIT TICKET MODAL */}
       {isEditingTicket && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
@@ -597,7 +605,6 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
                 />
               </div>
 
-              {/* NEW: Status & Priority in the Edit Modal */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Status</label>

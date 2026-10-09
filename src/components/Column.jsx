@@ -2,7 +2,7 @@
 import { useDroppable } from '@dnd-kit/core';
 import TicketCard from './TicketCard';
 
-export default function Column({ column, tickets, onTicketClick, onRequestArchiveTicket, onRequestDeleteTicket }) {
+export default function Column({ column, tickets, ticketNumberMap, onTicketClick, onRequestArchiveTicket, onRequestDeleteTicket }) {
   const { setNodeRef } = useDroppable({
     id: column.id,
   });
@@ -24,6 +24,7 @@ export default function Column({ column, tickets, onTicketClick, onRequestArchiv
           <TicketCard 
             key={ticket.id} 
             ticket={ticket} 
+            ticketNumber={ticketNumberMap[ticket.id] || '#1'}
             onClick={() => onTicketClick(ticket)} 
             onRequestArchiveTicket={onRequestArchiveTicket}
             onRequestDeleteTicket={onRequestDeleteTicket}

@@ -154,9 +154,9 @@ function MainLayout({ currentUser }) {
       isArchived: false,
       userId: currentUser.uid,
       authorEmail: currentUser.email,
-      // FIX: Save username and initials when a new ticket is made
       authorName: userProfile.username || userProfile.name || currentUser.email.split('@')[0],
-      authorInitials: userProfile.initials || currentUser.email.substring(0, 2).toUpperCase()
+      authorInitials: userProfile.initials || currentUser.email.substring(0, 2).toUpperCase(),
+      createdAt: serverTimestamp() // FIX: Tracks chronological order
     });
   };
 
