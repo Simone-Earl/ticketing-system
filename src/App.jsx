@@ -8,7 +8,8 @@ import ProfileSettingsModal from './components/ProfileSettingsModal';
 import ArchivePage from './components/ArchivePage';
 import ConfirmModal from './components/ConfirmModal';
 import LoginPage from './components/LoginPage';
-import InviteMemberModal from './components/InviteMemberModal'; 
+import InviteMemberModal from './components/InviteMemberModal';
+import Maintenance from './components/Maintenance'; // <-- 1. Import the Maintenance component
 import { Kanban, ChevronDown, Globe, BriefcaseBusiness, LayoutDashboard, FolderKanban, Plus, Settings, Archive, Trash2, LogOut, UserPlus } from 'lucide-react'; 
 
 import { db, auth } from './firebase'; 
@@ -397,6 +398,9 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 2. Check the environment variable
+  const isMaintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE === 'true';
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -404,6 +408,11 @@ function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // 3. Intercept everything if maintenance mode is ON
+  if (isMaintenanceMode) {
+    return <Maintenance />;
+  }
 
   if (loading) {
     return (
