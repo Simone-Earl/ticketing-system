@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Edit2, Code, ExternalLink, MessageSquare, 
   Clock, User, Tag, LayoutDashboard, ChevronDown, Send,
-  Trash2, Reply
+  Trash2, Reply, X
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal'; 
 
@@ -27,6 +27,18 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
   const [editText, setEditText] = useState('');
   const [replyingId, setReplyingId] = useState(null);
   const [replyText, setReplyText] = useState('');
+
+  // Enhanced Edit Ticket Modal State (now includes Status & Priority)
+  const [isEditingTicket, setIsEditingTicket] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    status: 'backlog',
+    priority: 'MEDIUM',
+    techStack: '',
+    repoLink: '',
+    liveLink: ''
+  });
 
   const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, commentId: null, parentId: null, snippet: '' });
 
@@ -52,6 +64,39 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
     setShowPriorityMenu(false);
   };
 
+  // Open Edit Modal and pre-fill all fields including status and priority
+  const openEditModal = () => {
+    setEditForm({
+      title: ticket.title || '',
+      description: ticket.description || '',
+      status: ticket.status || 'backlog',
+      priority: ticket.priority || 'MEDIUM',
+      techStack: Array.isArray(ticket.techStack) ? ticket.techStack.join(', ') : (ticket.techStack || ''),
+      repoLink: ticket.repoLink || '',
+      liveLink: ticket.liveLink || ''
+    });
+    setIsEditingTicket(true);
+  };
+
+  // Save Edit Modal Changes
+  const handleSaveTicketEdit = async (e) => {
+    e.preventDefault();
+    const updatedData = {
+      title: editForm.title.trim(),
+      description: editForm.description.trim(),
+      status: editForm.status,
+      priority: editForm.priority,
+      type: editForm.priority, // Legacy sync
+      techStack: editForm.techStack ? editForm.techStack.split(',').map(t => t.trim()).filter(Boolean) : [],
+      repoLink: editForm.repoLink.trim(),
+      liveLink: editForm.liveLink.trim()
+    };
+
+    await updateTicketInDB(ticket.id, updatedData);
+    addNotification('Ticket Updated', `"${updatedData.title}" was successfully updated.`);
+    setIsEditingTicket(false);
+  };
+
   const handleAddComment = async (e) => {
     if (e) e.preventDefault();
     if (!newComment.trim()) return;
@@ -71,7 +116,6 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
     setNewComment('');
   };
 
-  // Keyboard handler for Main Comment box (Enter = Send, Shift+Enter = New Line)
   const handleCommentKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -79,7 +123,6 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
     }
   };
 
-  // Keyboard handler for Reply box
   const handleReplyKeyDown = (e, parentId) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -189,7 +232,10 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
           <span className="text-slate-900 font-bold truncate max-w-[200px] md:max-w-[400px]">{ticket.title}</span>
         </div>
         
-        <button className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+        <button 
+          onClick={openEditModal}
+          className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+        >
           <Edit2 className="h-4 w-4" /> Edit Ticket
         </button>
       </div>
@@ -303,7 +349,6 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
                         </div>
                       </div>
 
-                      {/* REPLY TEXTAREA WITH KEYDOWN SUPPORT */}
                       {replyingId === comment.id && (
                         <form onSubmit={(e) => handleAddReply(e, comment.id)} className="ml-12 mt-2 flex items-start gap-2 animate-in slide-in-from-top-2 duration-200">
                           <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0 mt-1.5">
@@ -315,7 +360,7 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
                               value={replyText}
                               onChange={(e) => setReplyText(e.target.value)}
                               onKeyDown={(e) => handleReplyKeyDown(e, comment.id)}
-                              placeholder="Write a reply..."
+                              placeholder="Write a reply... (Shift + Enter for new line)"
                               className="w-full text-sm rounded-lg border border-slate-300 p-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm resize-none"
                               rows={2}
                             />
@@ -401,14 +446,13 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
               )}
             </div>
 
-            {/* MAIN COMMENT TEXTAREA WITH KEYDOWN SUPPORT */}
             <form onSubmit={handleAddComment} className="mt-4 pt-6 border-t border-slate-100">
               <div className="relative flex items-center">
                 <textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyDown={handleCommentKeyDown}
-                  placeholder="Ask a question or post a general update..."
+                  placeholder="Ask a question or post a general update... (Shift + Enter for new line)"
                   className="w-full rounded-xl border border-slate-300 pl-4 pr-14 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm resize-none"
                   rows={2}
                 />
@@ -515,6 +559,127 @@ export default function TicketPage({ tickets, updateTicketInDB, addNotification,
         </div>
 
       </div>
+
+      {/* ENHANCED EDIT TICKET MODAL */}
+      {isEditingTicket && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50">
+              <h2 className="font-extrabold text-slate-800 flex items-center gap-2">
+                <Edit2 className="h-5 w-5 text-blue-600" />
+                Edit Ticket
+              </h2>
+              <button onClick={() => setIsEditingTicket(false)} className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTicketEdit} className="p-6 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Title</label>
+                <input 
+                  required
+                  type="text" 
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Description</label>
+                <textarea 
+                  required
+                  rows="3"
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none shadow-sm text-sm"
+                />
+              </div>
+
+              {/* NEW: Status & Priority in the Edit Modal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Status</label>
+                  <select 
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({...editForm, status: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-white shadow-sm text-sm font-medium text-slate-700 cursor-pointer"
+                  >
+                    <option value="backlog">Backlog</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="in-review">In Review</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Priority</label>
+                  <select 
+                    value={editForm.priority}
+                    onChange={(e) => setEditForm({...editForm, priority: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-white shadow-sm text-sm font-medium text-slate-700 cursor-pointer"
+                  >
+                    <option value="URGENT">Urgent</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Tech Stack Tags (Comma separated)</label>
+                <input 
+                  type="text" 
+                  value={editForm.techStack}
+                  onChange={(e) => setEditForm({...editForm, techStack: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm text-sm"
+                  placeholder="e.g., React, Tailwind, Firebase"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Repository Link <span className="text-slate-400 font-normal lowercase">(optional)</span></label>
+                  <input 
+                    type="url" 
+                    value={editForm.repoLink}
+                    onChange={(e) => setEditForm({...editForm, repoLink: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm text-sm"
+                    placeholder="https://github.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Live Demo Link <span className="text-slate-400 font-normal lowercase">(optional)</span></label>
+                  <input 
+                    type="url" 
+                    value={editForm.liveLink}
+                    onChange={(e) => setEditForm({...editForm, liveLink: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm text-sm"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+
+              <div className="pt-6 mt-2 border-t border-slate-100 flex justify-end gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setIsEditingTicket(false)}
+                  className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal 
         isOpen={confirmDelete.isOpen} 
