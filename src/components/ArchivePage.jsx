@@ -1,6 +1,6 @@
 // src/components/ArchivePage.jsx
 import { useState } from 'react';
-import { Search, RotateCcw, Trash2, LayoutDashboard, Archive as ArchiveIcon } from 'lucide-react';
+import { Search, RotateCcw, Trash2, Archive as ArchiveIcon, Compass, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmModal from './ConfirmModal';
 
@@ -24,7 +24,6 @@ export default function ArchivePage({ allTickets, updateTicketInDB, deleteTicket
 
   const handleRestore = async (ticketId) => {
     await updateTicketInDB(ticketId, { isArchived: false });
-    // Removed notification
   };
 
   const requestDelete = (ticketId, ticketTitle) => {
@@ -33,7 +32,6 @@ export default function ArchivePage({ allTickets, updateTicketInDB, deleteTicket
 
   const executeDelete = async () => {
     await deleteTicketFromDB(confirmDialog.ticketId);
-    // Removed notification
     setConfirmDialog({ isOpen: false, ticketId: '', ticketTitle: '' });
   };
 
@@ -41,84 +39,88 @@ export default function ArchivePage({ allTickets, updateTicketInDB, deleteTicket
 
   const getStatusColor = (status) => {
     switch(status) {
-      case 'backlog': return 'bg-slate-100 text-slate-600 border-slate-200';
-      case 'in-progress': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'in-review': return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'done': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      default: return 'bg-slate-100 text-slate-600 border-slate-200';
+      case 'backlog': return 'bg-slate-100 text-slate-600';
+      case 'in-progress': return 'bg-amber-50 text-amber-600';
+      case 'in-review': return 'bg-purple-50 text-purple-600';
+      case 'done': return 'bg-emerald-50 text-emerald-600';
+      default: return 'bg-slate-100 text-slate-600';
     }
   };
 
   return (
-    <div className="flex flex-col animate-in fade-in duration-300 max-w-6xl mx-auto">
+    <div className="flex flex-col animate-in fade-in duration-300">
       
+      {/* Modern Breadcrumb / Mini-Header */}
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-          <button onClick={() => navigate('/')} className="hover:text-blue-600 transition-colors flex items-center gap-1.5">
-            <LayoutDashboard className="h-4 w-4" /> Workspace
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+          <button onClick={() => navigate('/')} className="hover:text-slate-900 transition-colors flex items-center gap-1.5">
+            <Compass className="h-4 w-4" /> Workspace
           </button>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-900 font-bold flex items-center gap-1.5">
-            <ArchiveIcon className="h-4 w-4" /> Archive
+          <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
+          <span className="text-slate-800 flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md">
+            <ArchiveIcon className="h-3.5 w-3.5" /> Documents & Archive
           </span>
         </div>
       </div>
 
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-900">Archived Tickets</h1>
-          <p className="text-sm text-slate-500 mt-1">Restore tickets to the board or permanently delete them.</p>
-        </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input 
-            type="text" 
-            placeholder="Search archive..." 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
-            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-sm" 
-          />
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        {filteredTickets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100">
-              <ArchiveIcon className="h-8 w-8 text-slate-300" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Archive is empty</h3>
-            <p className="text-sm text-slate-500">No archived tickets found in this workspace.</p>
+      {/* Main Archive Container */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        {/* Header & Search */}
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
+          <div>
+            <h1 className="text-lg font-extrabold text-slate-900">Archived Tasks</h1>
+            <p className="text-xs text-slate-500 mt-0.5">Restore tasks to the board or permanently delete them.</p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Search archive..." 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all shadow-sm" 
+            />
+          </div>
+        </div>
+
+        {/* List / Table */}
+        <div className="flex-1 overflow-x-auto">
+          {filteredTickets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="h-16 w-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-slate-100">
+                <ArchiveIcon className="h-8 w-8 text-slate-300" />
+              </div>
+              <h3 className="text-sm font-extrabold text-slate-900 mb-1">Archive is empty</h3>
+              <p className="text-xs text-slate-500">No archived tasks found in this workspace.</p>
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Ticket Details</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Reporter</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</th>
+                <tr className="bg-white border-b border-slate-100">
+                  <th className="px-6 py-4 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Task Details</th>
+                  <th className="px-6 py-4 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Reporter</th>
+                  <th className="px-6 py-4 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-50 bg-white">
                 {filteredTickets.map(ticket => (
-                  <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <tr key={ticket.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-slate-900 mb-1">{ticket.title}</p>
-                      <p className="text-xs text-slate-500 line-clamp-1 max-w-md">{ticket.description}</p>
+                      <p className="text-xs font-extrabold text-slate-800 mb-0.5">{ticket.title}</p>
+                      <p className="text-[10px] font-medium text-slate-500 line-clamp-1 max-w-md">{ticket.description}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold border ${getStatusColor(ticket.status)}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-extrabold tracking-wide uppercase ${getStatusColor(ticket.status)}`}>
                         {formatBadgeText(ticket.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-6 w-6 rounded-full bg-slate-900 flex items-center justify-center text-[9px] font-extrabold text-white shadow-sm">
                           {ticket.authorInitials || 'U'}
                         </div>
-                        <span className="text-xs font-medium text-slate-600">
+                        <span className="text-[11px] font-bold text-slate-600">
                           {ticket.authorName || ticket.authorEmail?.split('@')[0]}
                         </span>
                       </div>
@@ -127,13 +129,13 @@ export default function ArchivePage({ allTickets, updateTicketInDB, deleteTicket
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => handleRestore(ticket.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-extrabold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
                         >
                           <RotateCcw className="h-3.5 w-3.5" /> Restore
                         </button>
                         <button 
                           onClick={() => requestDelete(ticket.id, ticket.title)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-extrabold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
                         >
                           <Trash2 className="h-3.5 w-3.5" /> Delete
                         </button>
@@ -143,8 +145,8 @@ export default function ArchivePage({ allTickets, updateTicketInDB, deleteTicket
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <ConfirmModal 

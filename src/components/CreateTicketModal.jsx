@@ -1,129 +1,179 @@
 // src/components/CreateTicketModal.jsx
 import { useState } from 'react';
-import { X, LayoutDashboard } from 'lucide-react';
-
-const generateId = () => `TKT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+import { X, Plus, AlertCircle } from 'lucide-react';
 
 export default function CreateTicketModal({ onClose, onSave }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    priority: 'MEDIUM', // Changed from 'type' and using uppercase
     status: 'backlog',
-    tags: ''
+    priority: 'MEDIUM',
+    techStack: '',
+    repoLink: '',
+    liveLink: '',
+    deadline: ''
   });
+  const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+    if (!formData.title.trim() || !formData.description.trim()) {
+      setError('Title and description are required.');
+      return;
+    }
+
     const newTicket = {
-      id: generateId(), // Cleaner, string-based ID
       title: formData.title.trim(),
       description: formData.description.trim(),
-      priority: formData.priority, // Saving it cleanly as 'priority'
       status: formData.status,
-      // Fallback field for legacy components just in case
+      priority: formData.priority,
       type: formData.priority, 
-      tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+      techStack: formData.techStack ? formData.techStack.split(',').map(t => t.trim()).filter(Boolean) : [],
+      repoLink: formData.repoLink.trim(),
+      liveLink: formData.liveLink.trim(),
+      deadline: formData.deadline || ''
     };
 
     onSave(newTicket);
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50">
-          <h2 className="font-extrabold text-slate-800 flex items-center gap-2">
-            <LayoutDashboard className="h-5 w-5 text-blue-600" />
-            Create New Ticket
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center p-5 md:px-6 border-b border-slate-100 bg-white">
+          <h2 className="font-extrabold text-slate-900 flex items-center gap-2">
+            <div className="bg-blue-100 text-blue-600 p-1.5 rounded-lg">
+              <Plus className="h-4 w-4" />
+            </div>
+            Create New Task
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 md:p-6 flex flex-col gap-5 max-h-[80vh] overflow-y-auto bg-slate-50/50">
+          
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100">
+              <AlertCircle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
+
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Title</label>
+            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Task Title *</label>
             <input 
               required
               autoFocus
               type="text" 
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm text-sm"
-              placeholder="e.g., Fix Navigation Bug"
+              placeholder="e.g., Design Homepage UI"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 shadow-sm text-xs font-bold text-slate-800 transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Description</label>
+            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Description *</label>
             <textarea 
               required
               rows="3"
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none shadow-sm text-sm"
-              placeholder="Detailed description of the task..."
+              placeholder="Briefly describe the task requirements..."
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 resize-none shadow-sm text-xs text-slate-700 transition-all"
             />
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Priority</label>
-              <select 
-                value={formData.priority}
-                onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-white shadow-sm text-sm font-medium text-slate-700 cursor-pointer"
-              >
-                {/* Options are now exactly matching the uppercase dictionary */}
-                <option value="URGENT">Urgent</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Column</label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Initial Status</label>
               <select 
                 value={formData.status}
                 onChange={(e) => setFormData({...formData, status: e.target.value})}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-white shadow-sm text-sm font-medium text-slate-700 cursor-pointer"
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 shadow-sm text-xs font-bold text-slate-700 cursor-pointer transition-all"
               >
-                <option value="backlog">Backlog</option>
+                <option value="backlog">To Do</option>
                 <option value="in-progress">In Progress</option>
                 <option value="in-review">In Review</option>
                 <option value="done">Done</option>
               </select>
             </div>
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Priority</label>
+              <select 
+                value={formData.priority}
+                onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 shadow-sm text-xs font-bold text-slate-700 cursor-pointer transition-all"
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Deadline</label>
+              <input 
+                type="date" 
+                value={formData.deadline}
+                onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 shadow-sm text-xs font-bold text-slate-700 transition-all"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Tech Stack Tags</label>
+            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Tags (Comma separated)</label>
             <input 
               type="text" 
-              value={formData.tags}
-              onChange={(e) => setFormData({...formData, tags: e.target.value})}
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm text-sm"
-              placeholder="e.g., React, Tailwind, Node.js (Comma separated)"
+              value={formData.techStack}
+              onChange={(e) => setFormData({...formData, techStack: e.target.value})}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 shadow-sm text-xs transition-all"
+              placeholder="e.g., Design, Marketing, Bug"
             />
           </div>
 
-          <div className="pt-6 mt-2 border-t border-slate-100 flex justify-end gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Repository Link</label>
+              <input 
+                type="url" 
+                value={formData.repoLink}
+                onChange={(e) => setFormData({...formData, repoLink: e.target.value})}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 shadow-sm text-xs transition-all"
+                placeholder="https://github.com/..."
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Live Demo Link</label>
+              <input 
+                type="url" 
+                value={formData.liveLink}
+                onChange={(e) => setFormData({...formData, liveLink: e.target.value})}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 shadow-sm text-xs transition-all"
+                placeholder="https://..."
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 mt-2 flex justify-end gap-3">
             <button 
               type="button" 
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-colors"
             >
               Cancel
             </button>
             <button 
               type="submit"
-              disabled={!formData.title.trim() || !formData.description.trim()}
-              className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-md shadow-blue-500/20"
             >
-              Create Ticket
+              Create Task
             </button>
           </div>
         </form>

@@ -2,35 +2,33 @@
 import { useDroppable } from '@dnd-kit/core';
 import TicketCard from './TicketCard';
 
-export default function Column({ column, tickets, ticketNumberMap, onTicketClick, onRequestArchiveTicket, onRequestDeleteTicket }) {
-  const { setNodeRef } = useDroppable({
+export default function Column({ column, tickets, ticketNumberMap, onTicketClick, onRequestArchiveTicket, onRequestDeleteTicket, onRequestEditTicket }) {
+  const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
 
   return (
-    <div className="flex w-full h-full flex-col rounded-2xl bg-slate-200/50 p-3 border border-slate-200/60">
-      
-      <div className="mb-4 flex items-center justify-between px-2 pt-2">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">{column.title}</h2>
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-300/50 text-[10px] font-bold text-slate-600">
-            {tickets.length}
-          </span>
+    <div 
+      ref={setNodeRef}
+      className={`flex-1 flex flex-col gap-3 min-h-[450px] p-2 rounded-xl transition-colors ${isOver ? 'bg-blue-50/50 ring-2 ring-blue-500/20' : 'bg-slate-50/70'}`}
+    >
+      {tickets.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center p-6 text-center border border-dashed border-slate-200 rounded-lg">
+          <span className="text-[11px] text-slate-400 italic">No tasks in {column.title}</span>
         </div>
-      </div>
-
-      <div ref={setNodeRef} className="flex flex-1 flex-col gap-3 min-h-[200px]">
-        {tickets.map((ticket) => (
+      ) : (
+        tickets.map((ticket) => (
           <TicketCard 
             key={ticket.id} 
             ticket={ticket} 
-            ticketNumber={ticketNumberMap[ticket.id] || '#1'}
-            onClick={() => onTicketClick(ticket)} 
-            onRequestArchiveTicket={onRequestArchiveTicket}
-            onRequestDeleteTicket={onRequestDeleteTicket}
+            ticketNumber={ticketNumberMap[ticket.id]} 
+            onClick={onTicketClick} 
+            onRequestArchive={onRequestArchiveTicket}
+            onRequestDelete={onRequestDeleteTicket}
+            onRequestEdit={onRequestEditTicket}
           />
-        ))}
-      </div>
+        ))
+      )}
     </div>
   );
 }
